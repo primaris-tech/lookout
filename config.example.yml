@@ -1,0 +1,61 @@
+# Lookout — example configuration
+# Copy to config.yml and edit. All risk levels: TSTM, MRGL, SLGT, ENH, MDT, HIGH.
+
+# Required by NWS guidelines: identify yourself in the User-Agent header.
+# An email or repo URL is fine.
+user_agent_contact: "you@example.com"
+
+# Default risk threshold; any per-location threshold below overrides this.
+alert_threshold: MRGL
+
+locations:
+  home:
+    lat: 35.7796
+    lon: -78.6382
+    # No threshold override → inherits MRGL from alert_threshold above.
+  parents:
+    lat: 36.1627
+    lon: -86.7816
+    threshold: SLGT  # Only alert when SLGT or higher.
+
+products:
+  convective_outlook:
+    days: [1, 2, 3, 4, 5, 6, 7, 8]
+    notify_on:
+      - first_appearance    # Risk first appears for a target date
+      - risk_upgrade        # Severity increases (MRGL → SLGT etc.)
+      - day_shift_closer    # Same risk now appearing in a smaller-N day
+      - risk_cleared        # Previously-watched risk is removed
+  mesoscale_discussion:
+    enabled: true
+  probabilistic:
+    enabled: false          # Tornado/wind/hail probability events — opt-in, can be noisy.
+
+# Named notification destinations. Values are Apprise URLs:
+# https://github.com/caronc/apprise/wiki
+notification_channels:
+  my_phone: "ntfys://will-private-topic"
+  family_discord: "discord://webhook_id/webhook_token"
+  parents_email: "mailto://user:pass@smtp.example.com"
+
+# A rule fires when ALL its filters match: location ∈ locations,
+# product ∈ products (if set), severity ≥ min_threshold (if set).
+# Multiple rules can match a single event — each fires independently.
+notification_rules:
+  - name: "Me — everything for home"
+    locations: [home]
+    channels: [my_phone, family_discord]
+    # No min_threshold → uses the location's effective threshold (MRGL).
+
+  - name: "Parents — serious only"
+    locations: [parents]
+    min_threshold: SLGT
+    products: [convective_outlook, mesoscale_discussion]
+    channels: [parents_email]
+
+polling:
+  interval_minutes: 10           # How often to fetch SPC products.
+  meta_alert_after_minutes: 60   # Fire a meta-alert if SPC has been unreachable this long.
+
+# Drop state rows (outlook history, MD-alert records) older than this many days.
+state_retention_days: 30

@@ -1,0 +1,11 @@
+services:
+  lookout:
+    build: .
+    image: lookout:latest
+    container_name: lookout
+    restart: unless-stopped
+    volumes:
+      # User config — bind-mount from the host so edits don't require a rebuild.
+      - ./config.yml:/app/config.yml:ro
+      # SQLite state — persisted across container restarts.
+      - ./data:/app/data
