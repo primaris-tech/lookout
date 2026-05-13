@@ -33,6 +33,13 @@ data/
 *.sqlite
 *.sqlite3
 
+# Kubernetes secrets (real values — never commit)
+k8s/config-secret.yaml
+
+# AI / harness artifacts
+ai/
+.omegon/
+
 # OS
 .DS_Store
 Thumbs.db

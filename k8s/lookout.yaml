@@ -1,0 +1,130 @@
+# Lookout — Kubernetes deployment manifest
+#
+# Prerequisites (apply first):
+#   kubectl apply -f k8s/config-secret.example.yaml   # after filling in real values
+#
+# Then apply this file:
+#   kubectl apply -f k8s/lookout.yaml
+#
+# Upgrade image:
+#   kubectl set image deployment/lookout lookout=<image>:<tag> -n lookout
+#
+# Resources are sized for a lightweight polling service. Adjust if you add
+# many locations or very short polling intervals.
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lookout
+  labels:
+    app.kubernetes.io/name: lookout
+
+---
+# PersistentVolumeClaim for SQLite state (/app/data/lookout.db).
+# ReadWriteOnce is correct — only one replica ever writes.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lookout-data
+  namespace: lookout
+  labels:
+    app.kubernetes.io/name: lookout
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  # storageClassName: ""   # Uncomment and set if you need a specific StorageClass.
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lookout
+  namespace: lookout
+  labels:
+    app.kubernetes.io/name: lookout
+    app.kubernetes.io/version: "0.0.1"
+spec:
+  replicas: 1
+  # Recreate avoids two pods holding the SQLite file simultaneously.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: lookout
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: lookout
+        app.kubernetes.io/version: "0.0.1"
+    spec:
+      # Match the UID/GID created in the Dockerfile (useradd --uid 1000 lookout).
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: lookout
+          # Replace with your actual image reference, e.g.:
+          #   ghcr.io/your-org/lookout:0.0.1
+          image: lookout:latest
+          imagePullPolicy: IfNotPresent
+
+          # Matches the Dockerfile CMD exactly; --config points at the secret mount.
+          args:
+            - "--config"
+            - "/app/config.yml"
+            - "--db"
+            - "/app/data/lookout.db"
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+
+          volumeMounts:
+            # config.yml from Secret, read-only
+            - name: config
+              mountPath: /app/config.yml
+              subPath: config.yml
+              readOnly: true
+            # SQLite data directory, writable
+            - name: data
+              mountPath: /app/data
+            # /tmp scratch space needed when readOnlyRootFilesystem: true
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: config
+          secret:
+            secretName: lookout-config
+            defaultMode: 0400   # owner read-only; config contains credentials
+        - name: data
+          persistentVolumeClaim:
+            claimName: lookout-data
+        - name: tmp
+          emptyDir: {}
+
+      # Graceful shutdown: the poller loop should catch SIGTERM and exit cleanly.
+      terminationGracePeriodSeconds: 30
+
+      restartPolicy: Always
