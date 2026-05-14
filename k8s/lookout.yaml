@@ -73,10 +73,8 @@ spec:
 
       containers:
         - name: lookout
-          # Replace with your actual image reference, e.g.:
-          #   ghcr.io/your-org/lookout:0.0.1
-          image: lookout:latest
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/primaris-tech/lookout:latest
+          imagePullPolicy: Always
 
           # Matches the Dockerfile CMD exactly; --config points at the secret mount.
           args:
