@@ -58,6 +58,34 @@ $EDITOR config.yml
 lookout
 ```
 
+## Kubernetes
+
+Manifests in `k8s/` deploy Lookout against the published image at `ghcr.io/primaris-tech/lookout:latest` (built by `.github/workflows/docker-latest.yml` on every push to `main`; release tags `v*` produce `:<version>`).
+
+```
+cp k8s/config-secret.example.yaml k8s/config-secret.yaml
+$EDITOR k8s/config-secret.yaml            # paste your config.yml under stringData
+kubectl apply -f k8s/config-secret.yaml
+kubectl apply -f k8s/lookout.yaml
+```
+
+`k8s/config-secret.yaml` is gitignored — keep it local or store it in a secrets manager (Vault, SOPS, etc.).
+
+Pin to a release tag in production:
+
+```
+kubectl set image deployment/lookout lookout=ghcr.io/primaris-tech/lookout:<version> -n lookout
+```
+
+When pinning, also set `imagePullPolicy: IfNotPresent` in `k8s/lookout.yaml` — `Always` is the default there because `:latest` doesn't otherwise re-pull on pod restart.
+
+Notes:
+
+- **Single replica only.** SQLite is the state store; the Deployment uses `strategy: Recreate` and a `ReadWriteOnce` PVC. Don't scale up.
+- **Namespace `lookout`** is created by the manifest.
+- **State** lives on the `lookout-data` PVC (1Gi by default; resize if you add many locations or shorten the polling interval).
+- **Pod security**: runs as UID 1000 non-root with a read-only root filesystem; `/tmp` is an `emptyDir` for scratch space.
+
 ## Configuration
 
 Everything is in `config.yml`. See `config.example.yml` for a fully-annotated reference. The minimum:
