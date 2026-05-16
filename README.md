@@ -182,3 +182,7 @@ You can inspect state directly with `sqlite3 ./data/lookout.db`.
 - **MD polygon parsing depends on SPC's text-product format.** Mesoscale Discussions aren't published as GeoJSON; coordinates live inside the text product as a `LAT...LON` block of 8-digit codes. SPC has been consistent with this format for years, but it's an undocumented dependency. If SPC changes the format, the MD parser will need updating.
 - **Per-hazard probabilistic outlooks** (tornado/wind/hail individually) aren't implemented — only aggregate "any severe" via the categorical (D1–3) and probabilistic (D4–8) products.
 - **Time zones in messages** are currently UTC-derived (target_date is the SPC convective day, 12Z → 12Z). No localization yet.
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE).

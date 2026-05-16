@@ -6,6 +6,8 @@ build-backend = "hatchling.build"
 name = "lookout"
 version = "0.0.1"
 description = "Self-hosted forward-looking alerts for NWS Storm Prediction Center outlooks and mesoscale discussions"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.5",
